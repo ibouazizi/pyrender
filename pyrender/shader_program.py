@@ -93,11 +93,14 @@ class ShaderProgram(object):
     """
 
     def __init__(self, vertex_shader, fragment_shader,
-                 geometry_shader=None, defines=None):
+                 geometry_shader=None, tess_control_shader=None,
+                 tess_eval_shader=None, defines=None):
 
         self.vertex_shader = vertex_shader
         self.fragment_shader = fragment_shader
         self.geometry_shader = geometry_shader
+        self.tess_control_shader = tess_control_shader
+        self.tess_eval_shader = tess_eval_shader
 
         self.defines = defines
         if self.defines is None:
@@ -114,19 +117,33 @@ class ShaderProgram(object):
             raise ValueError('Shader program already in context')
         shader_ids = []
 
-        # Load vert shader
+        # Load vertex shader
         shader_ids.append(gl_shader_utils.compileShader(
             self._load(self.vertex_shader), GL_VERTEX_SHADER)
         )
-        # Load frag shader
-        shader_ids.append(gl_shader_utils.compileShader(
-            self._load(self.fragment_shader), GL_FRAGMENT_SHADER)
-        )
-        # Load geometry shader
+        
+        # Load tessellation control shader if present
+        if self.tess_control_shader is not None:
+            shader_ids.append(gl_shader_utils.compileShader(
+                self._load(self.tess_control_shader), GL_TESS_CONTROL_SHADER)
+            )
+            
+        # Load tessellation evaluation shader if present
+        if self.tess_eval_shader is not None:
+            shader_ids.append(gl_shader_utils.compileShader(
+                self._load(self.tess_eval_shader), GL_TESS_EVALUATION_SHADER)
+            )
+            
+        # Load geometry shader if present
         if self.geometry_shader is not None:
             shader_ids.append(gl_shader_utils.compileShader(
                 self._load(self.geometry_shader), GL_GEOMETRY_SHADER)
             )
+            
+        # Load fragment shader
+        shader_ids.append(gl_shader_utils.compileShader(
+            self._load(self.fragment_shader), GL_FRAGMENT_SHADER)
+        )
 
         # Bind empty VAO PYOPENGL BUG
         if self._vao_id is None:

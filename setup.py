@@ -9,22 +9,16 @@ from setuptools import setup
 # load __version__
 exec(open('pyrender/version.py').read())
 
-def get_imageio_dep():
-    if sys.version[0] == "2":
-        return 'imageio<=2.6.1'
-    return 'imageio'
-
 requirements = [
     'freetype-py',                # For font loading
-    get_imageio_dep(),            # For Image I/O
+    'imageio',                    # For Image I/O
     'networkx',                   # For the scene graph
     'numpy',                      # Numpy
     'Pillow',                     # For Trimesh texture conversions
     'pyglet>=1.4.10',             # For the pyglet viewer
-    'PyOpenGL~=3.1.0',            # For OpenGL
-#    'PyOpenGL_accelerate~=3.1.0', # For OpenGL
+    'PyOpenGL~=3.1.7',            # For OpenGL
+#    'PyOpenGL_accelerate~=3.1.7', # For OpenGL
     'scipy',                      # Because of trimesh missing dep
-    'six',                        # For Python 2/3 interop
     'trimesh',                    # For meshes
 ]
 
@@ -58,9 +52,11 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
         'Natural Language :: English',
         'Topic :: Scientific/Engineering'
     ],
