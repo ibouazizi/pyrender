@@ -159,8 +159,8 @@ class EGLPlatform(Platform):
             EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
             EGL_NONE
         ])
-        major, minor = ctypes.c_long(), ctypes.c_long()
-        num_configs = ctypes.c_long()
+        major, minor = ctypes.c_int32(), ctypes.c_int32()
+        num_configs = ctypes.c_int32()
         configs = (EGLConfig * 1)()
 
         # Cache DISPLAY if necessary and get an off-screen EGL display

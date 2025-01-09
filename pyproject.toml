@@ -1,0 +1,122 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyrender"
+dynamic = ["version"]
+description = "Easy-to-use Python renderer for 3D visualization"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Matthew Matl", email = "matthewcmatl@gmail.com" },
+]
+maintainers = [
+    { name = "Matthew Matl", email = "matthewcmatl@gmail.com" },
+]
+requires-python = ">=3.7"
+keywords = [
+    "rendering",
+    "graphics",
+    "opengl",
+    "3d",
+    "visualization",
+    "pbr",
+    "gltf",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "freetype-py",
+    "imageio",
+    "networkx",
+    "numpy",
+    "Pillow",
+    "pyglet>=1.4.10",
+    "PyOpenGL~=3.1.7",
+    "scipy",
+    "trimesh",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "tox",
+]
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+    "sphinx-automodapi",
+]
+
+[project.urls]
+Homepage = "https://github.com/mmatl/pyrender"
+Documentation = "https://pyrender.readthedocs.io/"
+Repository = "https://github.com/mmatl/pyrender.git"
+Issues = "https://github.com/mmatl/pyrender/issues"
+
+[tool.hatch.version]
+path = "pyrender/version.py"
+pattern = "__version__ = '(?P<version>[^']+)'"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/pyrender",
+    "/docs",
+    "/examples",
+    "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyrender"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["pyrender"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
+ignore_errors = true
+omit = [
+    "tests/*",
+    "setup.py",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py37", "py38", "py39", "py310", "py311"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88

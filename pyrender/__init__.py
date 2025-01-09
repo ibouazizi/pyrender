@@ -13,6 +13,12 @@ from .viewer import Viewer
 from .offscreen import OffscreenRenderer
 from .version import __version__
 from .constants import RenderFlags, TextAlign, GLTF
+from .compute_shader import ComputeShader
+from .advanced_features import (
+    DirectStateBuffer,
+    PersistentBuffer,
+    TransformFeedback
+)
 
 __all__ = [
     'Camera', 'PerspectiveCamera', 'OrthographicCamera', 'IntrinsicsCamera',
@@ -20,5 +26,6 @@ __all__ = [
     'Sampler', 'Texture', 'Material', 'MetallicRoughnessMaterial',
     'Primitive', 'Mesh', 'Node', 'Scene', 'Renderer', 'Viewer',
     'OffscreenRenderer', '__version__', 'RenderFlags', 'TextAlign',
-    'GLTF'
+    'GLTF', 'ComputeShader', 'DirectStateBuffer', 'PersistentBuffer',
+    'TransformFeedback'
 ]

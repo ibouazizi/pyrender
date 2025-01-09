@@ -1,0 +1,88 @@
+#version 430
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+// Particle data structure
+struct Particle {
+    vec4 position;    // xyz = position, w = life
+    vec4 velocity;    // xyz = velocity, w = size
+    vec4 color;       // rgba color
+};
+
+// Particle data buffer
+layout(std430, binding = 0) buffer ParticleBuffer {
+    Particle particles[];
+};
+
+// Simulation parameters
+layout(std430, binding = 1) buffer SimParams {
+    float deltaTime;
+    float gravity;
+    vec3 attractorPos;
+    float attractorStrength;
+} sim_params;
+
+// Random number generation
+uint wang_hash(uint seed) {
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+float random(uint seed) {
+    return float(wang_hash(seed)) / 4294967296.0;
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= particles.length()) return;
+
+    Particle particle = particles[gid];
+
+    // Update life
+    particle.position.w -= sim_params.deltaTime;
+
+    // Reset dead particles
+    if (particle.position.w <= 0.0) {
+        // Random position in a sphere
+        float theta = random(gid) * 2.0 * 3.14159;
+        float phi = acos(2.0 * random(gid + 1u) - 1.0);
+        float r = pow(random(gid + 2u), 0.33333) * 2.0;
+        
+        particle.position.xyz = vec3(
+            r * sin(phi) * cos(theta),
+            r * sin(phi) * sin(theta),
+            r * cos(phi)
+        );
+        particle.position.w = 1.0 + random(gid + 3u); // Random lifetime
+        
+        // Random velocity
+        particle.velocity.xyz = normalize(particle.position.xyz) * (2.0 + random(gid + 4u));
+        particle.velocity.w = 0.1 + random(gid + 5u) * 0.2; // Random size
+        
+        // Random color
+        particle.color = vec4(
+            0.5 + 0.5 * random(gid + 6u),
+            0.5 + 0.5 * random(gid + 7u),
+            0.5 + 0.5 * random(gid + 8u),
+            1.0
+        );
+    } else {
+        // Apply forces
+        vec3 toAttractor = sim_params.attractorPos - particle.position.xyz;
+        float dist = length(toAttractor);
+        vec3 force = normalize(toAttractor) * sim_params.attractorStrength / (dist * dist + 1.0);
+        
+        // Update velocity and position
+        particle.velocity.xyz += (force + vec3(0, -sim_params.gravity, 0)) * sim_params.deltaTime;
+        particle.position.xyz += particle.velocity.xyz * sim_params.deltaTime;
+        
+        // Fade out color
+        particle.color.a = particle.position.w;
+    }
+
+    particles[gid] = particle;
+}

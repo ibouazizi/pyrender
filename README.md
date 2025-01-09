@@ -6,7 +6,7 @@
 [![PyPI version](https://badge.fury.io/py/pyrender.svg)](https://badge.fury.io/py/pyrender)
 [![Downloads](https://pepy.tech/badge/pyrender)](https://pepy.tech/project/pyrender)
 
-Pyrender is a pure Python (2.7, 3.4, 3.5, 3.6) library for physically-based
+Pyrender is a pure Python (3.7-3.11) library for physically-based
 rendering and visualization.
 It is designed to meet the [glTF 2.0 specification from Khronos](https://www.khronos.org/gltf/).
 
@@ -27,10 +27,29 @@ check out the [EGL Google CoLab Notebook](https://colab.research.google.com/driv
 </p>
 
 ## Installation
-You can install pyrender directly from pip.
+
+### From PyPI
+You can install pyrender directly from pip:
 
 ```bash
 pip install pyrender
+```
+
+### From Source
+To install from source, clone the repository and install using pip:
+
+```bash
+git clone https://github.com/mmatl/pyrender.git
+cd pyrender
+pip install -e .
+```
+
+### Development Installation
+For development, install with additional dependencies:
+
+```bash
+pip install -e ".[dev,docs]"
+pre-commit install  # Set up pre-commit hooks
 ```
 
 ## Features
