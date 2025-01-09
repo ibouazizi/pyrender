@@ -10,9 +10,10 @@ readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
     { name = "Matthew Matl", email = "matthewcmatl@gmail.com" },
+    { name = "Imed Bouazizi", email = "ibouazizi@gmail.com" }
 ]
 maintainers = [
-    { name = "Matthew Matl", email = "matthewcmatl@gmail.com" },
+    { name = "Imed Bouazizi", email = "ibouazizi@gmail.com" },
 ]
 requires-python = ">=3.7"
 keywords = [
