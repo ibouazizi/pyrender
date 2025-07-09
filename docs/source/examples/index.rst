@@ -18,3 +18,4 @@ of each part of the rendering pipeline.
    scenes.rst
    offscreen.rst
    viewer.rst
+   dynamic_topology.rst

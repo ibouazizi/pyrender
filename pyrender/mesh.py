@@ -119,6 +119,38 @@ class Mesh(object):
             if p.is_transparent:
                 return True
         return False
+    
+    def update_topology(self, indices, primitive_index=0):
+        """Update the topology (connectivity) of a primitive in this mesh.
+        
+        Parameters
+        ----------
+        indices : array_like or None
+            The new face indices. Can be None for non-indexed primitives.
+        primitive_index : int
+            The index of the primitive to update (default: 0).
+        """
+        if primitive_index >= len(self.primitives):
+            raise ValueError(f"Primitive index {primitive_index} out of range")
+        
+        self.primitives[primitive_index].update_topology(indices)
+        self._bounds = None  # Invalidate mesh bounds cache
+    
+    def update_positions(self, positions, primitive_index=0):
+        """Update the vertex positions of a primitive in this mesh.
+        
+        Parameters
+        ----------
+        positions : (n,3) array_like
+            The new vertex positions.
+        primitive_index : int
+            The index of the primitive to update (default: 0).
+        """
+        if primitive_index >= len(self.primitives):
+            raise ValueError(f"Primitive index {primitive_index} out of range")
+        
+        self.primitives[primitive_index].update_positions(positions)
+        self._bounds = None  # Invalidate mesh bounds cache
 
     @staticmethod
     def from_points(points, colors=None, normals=None,

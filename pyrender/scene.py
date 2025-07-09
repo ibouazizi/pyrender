@@ -499,6 +499,13 @@ class Scene(object):
         self._digraph = nx.DiGraph()
         self._digraph.add_node('world')
         self._path_cache = {}
+    
+    def invalidate_bounds(self):
+        """Invalidate the cached bounds of the scene.
+        
+        This should be called when mesh geometry is updated dynamically.
+        """
+        self._bounds = None
 
     def _remove_node(self, node):
         """Remove a node and all its children from the scene.

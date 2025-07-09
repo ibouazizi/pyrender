@@ -67,7 +67,8 @@ class Primitive(object):
                  material=None,
                  mode=None,
                  targets=None,
-                 poses=None):
+                 poses=None,
+                 buffer_reserve_ratio=1.0):
 
         if mode is None:
             mode = GLTF.TRIANGLES
@@ -91,6 +92,9 @@ class Primitive(object):
         self._buffers = []
         self._is_transparent = None
         self._buf_flags = None
+        self._buffer_reserve_ratio = buffer_reserve_ratio
+        self._vertex_buffer_capacity = None
+        self._index_buffer_capacity = None
 
     @property
     def positions(self):
@@ -367,9 +371,18 @@ class Primitive(object):
         vertex_data = np.ascontiguousarray(
             vertex_data.flatten().astype(np.float32)
         )
+        
+        # Calculate buffer size with reserve ratio
+        buffer_size = int(len(vertex_data) * self._buffer_reserve_ratio)
+        self._vertex_buffer_capacity = buffer_size
+        
         glBufferData(
-            GL_ARRAY_BUFFER, FLOAT_SZ * len(vertex_data),
-            vertex_data, GL_STATIC_DRAW
+            GL_ARRAY_BUFFER, FLOAT_SZ * buffer_size,
+            None, GL_DYNAMIC_DRAW  # Allocate with reserve space
+        )
+        glBufferSubData(
+            GL_ARRAY_BUFFER, 0, FLOAT_SZ * len(vertex_data),
+            vertex_data
         )
         total_sz = sum(attr_sizes)
         offset = 0
@@ -417,10 +430,18 @@ class Primitive(object):
         if self.indices is not None:
             elementbuffer = glGenBuffers(1)
             self._buffers.append(elementbuffer)
+            self._element_buffer_id = elementbuffer  # Store for later updates
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer)
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ * self.indices.size,
-                         self.indices.flatten().astype(np.uint32),
-                         GL_STATIC_DRAW)
+            
+            # Calculate buffer size with reserve ratio
+            indices_data = self.indices.flatten().astype(np.uint32)
+            buffer_size = int(self.indices.size * self._buffer_reserve_ratio)
+            self._index_buffer_capacity = buffer_size
+            
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ * buffer_size,
+                         None, GL_DYNAMIC_DRAW)
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, UINT_SZ * self.indices.size,
+                         indices_data)
 
         glBindVertexArray(0)
 
@@ -442,6 +463,21 @@ class Primitive(object):
 
     def _unbind(self):
         glBindVertexArray(0)
+    
+    def sync_gpu(self):
+        """Synchronize any pending GPU updates. Must be called from GL thread."""
+        if not self._in_context():
+            return
+            
+        # Update vertex buffer if needed
+        if hasattr(self, '_needs_vertex_update') and self._needs_vertex_update:
+            self._update_vertex_buffer()
+            self._needs_vertex_update = False
+            
+        # Update index buffer if needed
+        if hasattr(self, '_needs_index_update') and self._needs_index_update:
+            self._update_index_buffer()
+            self._needs_index_update = False
 
     def _compute_bounds(self):
         """Compute the bounds of this object.
@@ -487,3 +523,143 @@ class Primitive(object):
             buf_flags |= BufFlags.WEIGHTS_0
 
         return buf_flags
+
+    def update_positions(self, positions):
+        """Update the vertex positions of this primitive dynamically.
+        
+        This method allows updating the vertex positions without recreating 
+        the entire object. Useful for animated meshes.
+        
+        Parameters
+        ----------
+        positions : (n,3) array_like
+            The new vertex positions.
+        """
+        positions = np.asanyarray(positions, dtype=np.float32)
+        self._positions = np.ascontiguousarray(positions)
+        self._bounds = None  # Invalidate bounds cache
+        
+        # Mark as needing GPU update instead of updating immediately
+        # This allows updates from any thread
+        self._needs_vertex_update = True
+    
+    def _update_vertex_buffer(self):
+        """Update the vertex buffer on the GPU."""
+        if not self._in_context():
+            return
+            
+        # Bind VAO
+        glBindVertexArray(self._vaid)
+        
+        # Reconstruct vertex data
+        vertex_data = self.positions
+        
+        # Add other attributes if present
+        if self.normals is not None:
+            vertex_data = np.hstack((vertex_data, self.normals))
+        if self.tangents is not None:
+            vertex_data = np.hstack((vertex_data, self.tangents))
+        if self.texcoord_0 is not None:
+            vertex_data = np.hstack((vertex_data, self.texcoord_0))
+        if self.texcoord_1 is not None:
+            vertex_data = np.hstack((vertex_data, self.texcoord_1))
+        if self.color_0 is not None:
+            vertex_data = np.hstack((vertex_data, self.color_0))
+        
+        # Copy data to buffer
+        vertex_data = np.ascontiguousarray(
+            vertex_data.flatten().astype(np.float32)
+        )
+        
+        # Update the first buffer (vertex buffer)
+        if len(self._buffers) > 0:
+            glBindBuffer(GL_ARRAY_BUFFER, self._buffers[0])
+            
+            # Check if we need to reallocate
+            if self._vertex_buffer_capacity is not None and len(vertex_data) <= self._vertex_buffer_capacity:
+                # Use glBufferSubData for better performance
+                glBufferSubData(
+                    GL_ARRAY_BUFFER, 0, FLOAT_SZ * len(vertex_data),
+                    vertex_data
+                )
+            else:
+                # Need to reallocate with new size
+                buffer_size = int(len(vertex_data) * self._buffer_reserve_ratio)
+                self._vertex_buffer_capacity = buffer_size
+                glBufferData(
+                    GL_ARRAY_BUFFER, FLOAT_SZ * buffer_size,
+                    None, GL_DYNAMIC_DRAW
+                )
+                glBufferSubData(
+                    GL_ARRAY_BUFFER, 0, FLOAT_SZ * len(vertex_data),
+                    vertex_data
+                )
+        
+        glBindVertexArray(0)
+
+    def update_topology(self, indices):
+        """Update the indices of this primitive dynamically.
+        
+        This method allows updating the connectivity (topology) of the primitive
+        without recreating the entire object. Useful for dynamic meshes like
+        skeleton visualizations.
+        
+        Parameters
+        ----------
+        indices : array_like or None
+            The new face indices. Can be None for non-indexed primitives.
+        """
+        if indices is not None:
+            indices = np.asanyarray(indices, dtype=np.float32)
+            indices = np.ascontiguousarray(indices)
+        
+        self._indices = indices
+        self._bounds = None  # Invalidate bounds cache
+        
+        # Mark as needing GPU update instead of updating immediately
+        # This allows updates from any thread
+        self._needs_index_update = True
+    
+    def _update_index_buffer(self):
+        """Update the index buffer on the GPU."""
+        if not self._in_context():
+            return
+            
+        # Bind VAO
+        glBindVertexArray(self._vaid)
+        
+        # Find and update or create index buffer
+        if self.indices is not None:
+            indices_data = self.indices.flatten().astype(np.uint32)
+            
+            # Check if we already have an element buffer
+            element_buffer = None
+            if hasattr(self, '_element_buffer_id'):
+                element_buffer = self._element_buffer_id
+            else:
+                # Create new element buffer
+                element_buffer = glGenBuffers(1)
+                self._buffers.append(element_buffer)
+                self._element_buffer_id = element_buffer
+                self._index_buffer_capacity = None
+            
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer)
+            
+            # Check if we need to reallocate
+            if self._index_buffer_capacity is not None and self.indices.size <= self._index_buffer_capacity:
+                # Use glBufferSubData for better performance
+                glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, UINT_SZ * self.indices.size,
+                            indices_data)
+            else:
+                # Need to reallocate with new size
+                buffer_size = int(self.indices.size * self._buffer_reserve_ratio)
+                self._index_buffer_capacity = buffer_size
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ * buffer_size,
+                            None, GL_DYNAMIC_DRAW)
+                glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, UINT_SZ * self.indices.size,
+                            indices_data)
+        else:
+            # If indices are None, unbind element buffer
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+            
+        glBindVertexArray(0)

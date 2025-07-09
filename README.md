@@ -67,6 +67,7 @@ normals, toggling lighting conditions, and saving images and GIFs.
 types of texture and normal mapping.
 * Transparency.
 * Depth and color image generation.
+* Dynamic topology updates for real-time mesh connectivity changes.
 
 ## Sample Usage
 
