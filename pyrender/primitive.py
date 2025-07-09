@@ -309,10 +309,25 @@ class Primitive(object):
         if self._buf_flags is None:
             self._buf_flags = self._compute_buf_flags()
         return self._buf_flags
+    
+    def __del__(self):
+        """Destructor that ensures clean resource deallocation."""
+        try:
+            # Only attempt cleanup if we have GL resources
+            if hasattr(self, '_vaid') and self._vaid is not None:
+                self.delete()
+        except:
+            # Suppress all exceptions during destruction
+            pass
 
     def delete(self):
-        self._unbind()
-        self._remove_from_context()
+        try:
+            self._unbind()
+            self._remove_from_context()
+        except OSError as e:
+            # Suppress access violations during cleanup
+            if "access violation" not in str(e):
+                raise
 
     @property
     def is_transparent(self):
@@ -447,10 +462,30 @@ class Primitive(object):
 
     def _remove_from_context(self):
         if self._vaid is not None:
-            glDeleteVertexArrays(1, [self._vaid])
-            glDeleteBuffers(len(self._buffers), self._buffers)
-            self._vaid = None
-            self._buffers = []
+            try:
+                # Check if we have a valid GL context before attempting deletion
+                # This prevents access violations when GL context is already destroyed
+                try:
+                    # Try a simple GL call to test if context is valid
+                    current_context = glGetInteger(GL_VERTEX_ARRAY_BINDING)
+                    # If we get here, context is valid, proceed with cleanup
+                    glDeleteVertexArrays(1, [self._vaid])
+                    if self._buffers:
+                        glDeleteBuffers(len(self._buffers), self._buffers)
+                except:
+                    # Context is invalid, skip GL cleanup
+                    pass
+            except OSError as e:
+                # Suppress access violations during cleanup
+                if "access violation" not in str(e):
+                    raise
+                # Otherwise silently ignore the error during cleanup
+            except Exception:
+                # Suppress any other GL-related exceptions during cleanup
+                pass
+            finally:
+                self._vaid = None
+                self._buffers = []
 
     def _in_context(self):
         return self._vaid is not None
@@ -462,7 +497,12 @@ class Primitive(object):
         glBindVertexArray(self._vaid)
 
     def _unbind(self):
-        glBindVertexArray(0)
+        try:
+            glBindVertexArray(0)
+        except OSError as e:
+            # Suppress access violations during cleanup
+            if "access violation" not in str(e):
+                raise
     
     def sync_gpu(self):
         """Synchronize any pending GPU updates. Must be called from GL thread."""

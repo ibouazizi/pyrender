@@ -161,10 +161,28 @@ class ShaderProgram(object):
 
     def _remove_from_context(self):
         if self._program_id is not None:
-            glDeleteProgram(self._program_id)
-            glDeleteVertexArrays(1, [self._vao_id])
-            self._program_id = None
-            self._vao_id = None
+            try:
+                # Check if we have a valid GL context before attempting deletion
+                try:
+                    # Try a simple GL call to test if context is valid
+                    glGetInteger(GL_CURRENT_PROGRAM)
+                    # If we get here, context is valid, proceed with cleanup
+                    glDeleteProgram(self._program_id)
+                    if self._vao_id is not None:
+                        glDeleteVertexArrays(1, [self._vao_id])
+                except:
+                    # Context is invalid, skip GL cleanup
+                    pass
+            except OSError as e:
+                # Suppress access violations during cleanup
+                if "access violation" not in str(e):
+                    raise
+            except Exception:
+                # Suppress any other GL-related exceptions during cleanup
+                pass
+            finally:
+                self._program_id = None
+                self._vao_id = None
 
     def _load(self, shader_filename):
         path, _ = os.path.split(shader_filename)
